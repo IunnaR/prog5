@@ -1,0 +1,75 @@
+import json
+import requests
+import matplotlib.pyplot as plt
+from bs4 import BeautifulSoup
+from typing import Dict, Any
+
+class CurrenciesList:
+    def get_currencies(self) -> Dict[str, Any]:
+        url = 'http://www.cbr.ru/scripts/XML_daily.asp'
+        response = requests.get(url)
+
+        if response.status_code == 200:
+            xml_data = response.content
+            soup = BeautifulSoup(xml_data, 'xml')
+            all_valutes = soup.find_all('Valute')
+
+            currencies = {}
+            for valute in all_valutes:
+                code = valute.find('CharCode').text.strip()
+                name = valute.find('Name').text.strip()
+                value = valute.find('Value').text.strip()
+                nominal = valute.find('Nominal').text.strip()
+                currencies[code] = {
+                    'name': name,
+                    'value': value,
+                    'nominal': nominal
+                }
+
+            return currencies
+        else:
+            raise Exception("Failed")
+
+class CurrencyDecorator:
+    def __init__(self, component: CurrenciesList):
+        self._component = component
+
+    def get_currencies(self) -> Dict[str, Any]:
+        return self._component.get_currencies()
+
+class ConcreteDecoratorJSON(CurrencyDecorator):
+    def get_currencies(self) -> str:
+        currencies = self._component.get_currencies()
+        with open('currencies.json', 'w', encoding='utf-8') as file:
+            json.dump(currencies, file, ensure_ascii=False, indent=4)
+        return json.dumps(currencies, ensure_ascii=False, indent=4)
+
+class VisualizationDecorator(CurrencyDecorator):
+    def visualize_currencies(self) -> None:
+        currencies = self._component.get_currencies()
+
+        if isinstance(currencies, str):
+            currencies = json.loads(currencies)
+
+        names = [details['name'] for details in currencies.values()]
+        values = [float(details['value'].replace(',', '.')) / int(details['nominal']) for details in currencies.values()]
+
+        plt.figure(figsize=(15, 8))
+        plt.bar(names, values, color='skyblue')
+        plt.title('Значения валют')
+        plt.xlabel('Валюта')
+        plt.ylabel('Валюта в рублях')
+        plt.xticks(rotation=90)
+        plt.tight_layout()
+        plt.savefig('currency_values.png')
+        plt.show()
+
+if __name__ == "__main__":
+    base_currencies = CurrenciesList()
+
+    json_decorator = ConcreteDecoratorJSON(base_currencies)
+    print("\nJSON Format:")
+    print(json_decorator.get_currencies())
+
+    visualization_decorator = VisualizationDecorator(base_currencies)
+    visualization_decorator.visualize_currencies()
