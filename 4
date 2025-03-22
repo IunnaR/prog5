@@ -1,0 +1,60 @@
+from typing import List
+
+def my_genn():
+    while True:
+        n = yield  
+        if n <= 0:
+            result = []
+        else:
+            fib_list = [0, 1]
+            while len(fib_list) < n:
+                fib_list.append(fib_list[-1] + fib_list[-2])
+            result = fib_list[:n]
+        yield result
+
+
+class FibonacchiLst:
+    def __init__(self, instance: List[int]):
+        self.instance = instance   
+        self.idx = 0
+        self.fib_set = set(self._generate_fib(max(instance) + 1))  
+
+    def _generate_fib(self, limit: int) -> List[int]:
+        fib_list = [0, 1]
+        while fib_list[-1] + fib_list[-2] <= limit:
+            fib_list.append(fib_list[-1] + fib_list[-2])
+        return fib_list
+
+    def __iter__(self):
+        self.idx = 0  
+        return self 
+
+    def __next__(self):
+        while self.idx < len(self.instance):
+            res = self.instance[self.idx]
+            self.idx += 1
+            if res in self.fib_set:
+                return res
+        raise StopIteration
+
+
+def gen_fib():
+    prev, curr = 0, 1
+    while True:
+        yield prev
+        prev, curr = curr, prev + curr
+
+
+# Тесты
+if __name__ == "__main__":
+    gen = my_genn()
+    next(gen)  
+    print(gen.send(3))  
+    next(gen) 
+    print(gen.send(5))  
+    next(gen)  
+    print(gen.send(8))  
+
+    lst = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1]
+    fib_iter = FibonacchiLst(lst)
+    print(list(fib_iter))  
