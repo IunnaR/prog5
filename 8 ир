@@ -1,0 +1,72 @@
+import requests
+import json
+import matplotlib.pyplot as plt
+from datetime import datetime
+
+def get_weather_data(place, api_key=None):
+    if api_key is None:
+        raise ValueError("API key is required")
+
+    url = f'https://api.openweathermap.org/data/2.5/forecast?q={place}&appid={api_key}&units=metric'
+
+    response = requests.get(url)
+    if response.status_code != 200:
+        print(f"Ошибка при получении данных для {place}")
+        return json.dumps({"city": place, "temperatures": []}, ensure_ascii=False, indent=4)
+
+    data = response.json()
+
+    temperatures = []
+    for forecast in data['list']:
+        dt = datetime.fromtimestamp(forecast['dt'])
+        if dt.hour == 12:
+            temperatures.append({
+                "dt": forecast['dt'],
+                "temp": forecast['main']['temp']
+            })
+
+    result = {
+        "city": place,
+        "temperatures": temperatures
+    }
+    return json.dumps(result, ensure_ascii=False, indent=4)
+
+def visualize_data(json_data=''):
+    if json_data:
+        import pandas as pd
+        data = json.loads(json_data)
+
+        dates = [datetime.fromtimestamp(item['dt']).strftime('%d/%m') for item in data['temperatures']]
+        temps = [item['temp'] for item in data['temperatures']]
+
+        plt.figure(figsize=(12, 6))
+
+        plt.subplot(1, 2, 1)
+        plt.scatter(dates, temps, color='blue', label='Temperature')
+        plt.title(f"Прогноз погоды в Москве")
+        plt.xlabel("Дата")
+        plt.ylabel("Температура (°C)")
+        plt.xticks(rotation=45)
+        plt.grid(True)
+
+        plt.subplot(1, 2, 2)
+        plt.boxplot(temps, vert=False)
+        plt.title(f"Диграмма размаха ")
+        plt.xlabel("Температура (°C)")
+
+        plt.tight_layout()
+        plt.show()
+
+def main():
+    api_key = '6c1d889aaf151880d51264b730e1e3eb'
+    city = 'Moscow'
+
+    try:
+        weather_data = get_weather_data(city, api_key=api_key)
+        print(f"Weather data for {city}: {weather_data}")
+        visualize_data(weather_data)
+    except Exception as e:
+        print(f"Error fetching weather data for {city}: {e}")
+
+if __name__ == '__main__':
+    main()
